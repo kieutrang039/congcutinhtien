@@ -1,5 +1,110 @@
-
 import streamlit as st
+from openai import OpenAI
+
+# Khởi tạo AI
+client = OpenAI(
+    api_key=st.secrets["OPENAI_API_KEY"]
+)
+
+st.header("🤖 FinMate AI")
+st.write(
+    "Xin chào! Tôi có thể giúp bạn lập ngân sách, "
+    "tiết kiệm và giải đáp các câu hỏi tài chính cá nhân."
+)
+
+# Hồ sơ tài chính mẫu.
+# Khi tích hợp vào app chính, thay các giá trị này
+# bằng dữ liệu hồ sơ thực tế của người dùng.
+income = 8_000_000
+housing_cost = 2_500_000
+essential_cost = 2_700_000
+monthly_debt = 0
+financial_goal = "Xây dựng quỹ dự phòng"
+
+profile = f"""
+Thu nhập hàng tháng: {income:,} VNĐ.
+Chi phí nhà ở: {housing_cost:,} VNĐ.
+Các chi phí thiết yếu khác: {essential_cost:,} VNĐ.
+Khoản trả nợ hàng tháng: {monthly_debt:,} VNĐ.
+Mục tiêu tài chính: {financial_goal}.
+Đây là hồ sơ mẫu dùng để minh họa.
+"""
+
+# Lịch sử hội thoại trong phiên hiện tại
+if "finmate_messages" not in st.session_state:
+    st.session_state.finmate_messages = []
+
+# Hiển thị hội thoại cũ
+for message in st.session_state.finmate_messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# Ô nhập câu hỏi
+question = st.chat_input(
+    "Ví dụ: Làm sao tiết kiệm 10 triệu trong 6 tháng?"
+)
+
+if question:
+    st.session_state.finmate_messages.append({
+        "role": "user",
+        "content": question
+    })
+
+    with st.chat_message("user"):
+        st.markdown(question)
+
+    instructions = f"""
+Bạn là FinMate AI, trợ lý giáo dục tài chính cá nhân.
+
+NHIỆM VỤ:
+- Trả lời bằng tiếng Việt thân thiện, dễ hiểu.
+- Giúp lập ngân sách, tiết kiệm, theo dõi chi tiêu,
+  giải thích kiến thức tài chính và so sánh phương án.
+- Cá nhân hóa câu trả lời dựa trên hồ sơ được cung cấp.
+- Nếu thiếu dữ liệu, hãy hỏi lại thay vì tự bịa số liệu.
+- Khi tính toán, trình bày công thức và giả định.
+- Không khẳng định tỷ lệ 50/30/20 phù hợp với tất cả mọi người.
+- Không cam kết lợi nhuận hoặc khuyến nghị đầu tư
+  cá nhân hóa vượt quá phạm vi hỗ trợ của bạn.
+- Nếu người dùng có dấu hiệu khó trả nợ,
+  hãy ưu tiên nghĩa vụ thiết yếu và phương án an toàn.
+- Không yêu cầu mật khẩu, mã OTP hay thông tin đăng nhập ngân hàng.
+- Nhắc người dùng kiểm tra các giả định quan trọng.
+
+HỒ SƠ TÀI CHÍNH:
+{profile}
+
+Chỉ sử dụng hồ sơ này cho câu hỏi hiện tại.
+Không mặc định hồ sơ mẫu là dữ liệu thật của khách hàng.
+"""
+
+    with st.chat_message("assistant"):
+        with st.spinner("FinMate AI đang suy nghĩ..."):
+            try:
+                # Gửi lịch sử hội thoại gần đây
+                recent_messages = (
+                    st.session_state.finmate_messages[-10:]
+                )
+
+                response = client.responses.create(
+                    model="gpt-4.1-mini",
+                    instructions=instructions,
+                    input=recent_messages
+                )
+
+                answer = response.output_text
+                st.markdown(answer)
+
+            except Exception:
+                answer = (
+                    "Xin lỗi, hiện chưa thể kết nối trợ lý AI. "
+                    "Bạn hãy thử lại sau."
+                )
+                st.error(answer)
+
+    st.session_state.finmate_messages.append({
+        "role": "assistant",
+        "content": answer
 import pandas as pd
 
 st.set_page_config(
